@@ -10,6 +10,17 @@
 
 Author: Saed O S Radi
 
+<p align="center">
+  <a href="https://saadosama10.github.io/phone-usage-stats/demo/"><img src="https://img.shields.io/badge/%F0%9F%93%8A%20Try%20it%20in%20your%20browser-Live%20Demo-4f6bed?style=for-the-badge" alt="Try it in your browser" height="48" /></a>
+</p>
+
+<p align="center"><a href="https://saadosama10.github.io/phone-usage-stats/demo/"><img src="screenshots/web-demo.gif" width="720" alt="The web demo: descriptive stats, confidence interval, t and z tests, charts" /></a></p>
+
+**No install, no server:** the web demo runs the *same hand-written* [`stats_tools.py`](stats_tools.py), unchanged, in your browser through [Pyodide](https://pyodide.org) (Python compiled to WebAssembly). The CSV is loaded client-side and the charts only draw numbers computed by that Python code. The page lives in [`docs/demo/`](docs/demo) and is served by GitHub Pages.
+
+**Parity with the desktop app:** [`tests/parity_test.py`](tests/parity_test.py) drives the real PyQt5 window and the browser demo over all 7 numeric columns, in t-mode (σ blank) and z-mode (σ given), for every analysis (390 checks, including invalid-input messages). Result: **all 390 printed outputs are identical** to the desktop app, and 2,446 of 2,597 raw floating-point values match CPython bit for bit; the other 151 differ only in the last 1 to 3 bits (WebAssembly's `erf` is not bit-identical to the native one) and never change a printed digit. Histogram and box-plot data also match numpy/matplotlib. `tests/e2e_demo.py` checks the live page with Playwright (61 checks: every button on 2 columns in both modes, validation messages, charts, no console errors, no horizontal overflow at 375 px).
+
+
 ---
 
 ## Overview
@@ -105,6 +116,12 @@ Example (App Usage Time, min/day, n = 700):
 ├── user_behavior_dataset.csv   # Dataset (Apache 2.0, see Dataset below)
 ├── DATASET_LICENSE.txt         # Apache License 2.0 text for the dataset
 ├── x.jpeg                      # Window background image
+├── docs/
+│   ├── index.html              # Redirects to the demo
+│   └── demo/                   # Web version (Pyodide); stats_tools.py and the CSV are byte-identical copies
+├── tests/
+│   ├── parity_test.py          # Browser vs desktop vs CPython parity
+│   └── e2e_demo.py             # Playwright check of the live page
 ├── screenshots/
 └── requirements.txt
 ```
