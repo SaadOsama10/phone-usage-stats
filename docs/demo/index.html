@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone Usage Statistics – in your browser</title>
+<meta name="description" content="Hand-written Python statistics (stats_tools.py) running client-side in your browser with Pyodide, on a 700-user phone-usage dataset.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='9' y='3' width='14' height='26' rx='3' fill='%234f6bed'/%3E%3Crect x='11' y='7' width='10' height='15' rx='1' fill='white'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#1b1f2a;--muted:#5b6475;--line:#e2e5ee;--accent:#4f6bed;--accent-ink:#fff;--soft:#eef1fe;--ok:#127a46;--okbg:#e4f6ec;--bad:#b3261e;--badbg:#fdeceb;--warn:#8a5a00;--warnbg:#fff4dc;--bar:#6f86f2;--shadow:0 1px 2px rgba(20,25,40,.06),0 4px 14px rgba(20,25,40,.05)}
+:root[data-theme=dark]{--bg:#12141c;--card:#1b1e29;--ink:#e8eaf2;--muted:#9aa3b7;--line:#2c3040;--accent:#7f95ff;--accent-ink:#0f1220;--soft:#252a40;--ok:#6fdc9f;--okbg:#17302a;--bad:#ff9a92;--badbg:#3a1f23;--warn:#ffd27a;--warnbg:#3a3017;--bar:#7f95ff;--shadow:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#12141c;--card:#1b1e29;--ink:#e8eaf2;--muted:#9aa3b7;--line:#2c3040;--accent:#7f95ff;--accent-ink:#0f1220;--soft:#252a40;--ok:#6fdc9f;--okbg:#17302a;--bad:#ff9a92;--badbg:#3a1f23;--warn:#ffd27a;--warnbg:#3a3017;--bar:#7f95ff;--shadow:none}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:anywhere}
+.wrap{max-width:960px;margin:0 auto;padding:0 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 0 8px}
+h1{font-size:1.5rem;margin:0;line-height:1.2}
+.sub{color:var(--muted);margin:4px 0 0;font-size:.95rem}
+.top-actions{display:flex;gap:8px;flex-shrink:0}
+a{color:var(--accent)}
+.btn-link,.icon-btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;font:inherit;font-size:.9rem;text-decoration:none;cursor:pointer;min-height:40px;display:inline-flex;align-items:center}
+.btn-link:hover,.icon-btn:hover{border-color:var(--accent)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow);margin-top:16px}
+.field-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:4px}
+select,input{width:100%;font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-height:44px}
+select:focus,input:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tab{flex:1 1 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;border-radius:10px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer;min-height:44px}
+.tab:hover:not(:disabled){border-color:var(--accent)}
+.tab[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab:disabled{opacity:.5;cursor:wait}
+#results{margin-top:16px;min-height:120px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.card h2{font-size:1.05rem;margin:0 0 4px}
+.card .col{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.badge{display:inline-block;font-size:.78rem;font-weight:700;border-radius:999px;padding:3px 10px;background:var(--soft);color:var(--accent)}
+.badge.ok{background:var(--okbg);color:var(--ok)}.badge.bad{background:var(--badbg);color:var(--bad)}.badge.warn{background:var(--warnbg);color:var(--warn)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat .k{font-size:.74rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.stat .v{font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums}
+.stat.big{grid-column:1/-1}
+.stat.big .v{font-size:1.5rem}
+.note{font-size:.88rem;color:var(--muted);margin:12px 0 0}
+.msg{border-radius:12px;padding:12px 14px;font-weight:600}
+.msg.err{background:var(--badbg);color:var(--bad);border:1px solid var(--bad)}
+.msg.info{background:var(--soft);color:var(--ink);border:1px solid var(--line);font-weight:400}
+.charts{display:grid;gap:14px}
+.chart{width:100%;height:300px}
+.chart.short{height:200px}
+details{margin-top:12px;font-size:.85rem}
+summary{cursor:pointer;color:var(--muted)}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre-wrap;font:.8rem/1.45 ui-monospace,Menlo,Consolas,monospace;margin:8px 0 0}
+#loader{display:flex;align-items:center;gap:12px}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;flex-shrink:0}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.about h2{font-size:1.05rem;margin:0 0 8px}
+.about p{margin:0 0 8px;font-size:.92rem}
+footer{color:var(--muted);font-size:.85rem;margin-top:20px;text-align:center}
+@media (max-width:640px){.field-grid{grid-template-columns:1fr 1fr}.field-grid .wide{grid-column:1/-1}header{flex-direction:column;align-items:flex-start}h1{font-size:1.3rem}.tab{flex:1 1 45%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>📱 Phone Usage Statistics</h1>
+      <p class="sub">The desktop dashboard's hand-written Python, running in your browser.</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn-link" href="https://github.com/SaadOsama10/phone-usage-stats">GitHub repo</a>
+      <button class="icon-btn" id="theme" type="button" aria-label="Toggle light/dark theme">◐ Theme</button>
+    </div>
+  </header>
+
+  <section class="panel" id="loader" role="status" aria-live="polite">
+    <div class="spin" aria-hidden="true"></div>
+    <div><strong id="load-title">Starting Python in your browser…</strong><div class="hint" id="load-detail">Downloading Pyodide (first load takes a few seconds)</div></div>
+  </section>
+
+  <main id="app" hidden>
+    <section class="panel" aria-label="Parameters">
+      <div class="field-grid">
+        <div class="wide"><label for="column">Column</label><select id="column"></select></div>
+        <div><label for="mu0">μ₀ (hypothesised mean)</label><input id="mu0" value="100" inputmode="decimal" autocomplete="off"></div>
+        <div><label for="sigma">σ (optional)</label><input id="sigma" placeholder="unknown (use s)" inputmode="decimal" autocomplete="off"><div class="hint">Blank → Student's t; given → z</div></div>
+        <div><label for="margin">E (margin of error)</label><input id="margin" value="5" inputmode="decimal" autocomplete="off"></div>
+      </div>
+    </section>
+
+    <div class="tabs" role="group" aria-label="Analyses">
+      <button class="tab" type="button" data-action="describe">Descriptive Stats</button>
+      <button class="tab" type="button" data-action="ci">Confidence Interval</button>
+      <button class="tab" type="button" data-action="test">Hypothesis Test</button>
+      <button class="tab" type="button" data-action="size">Sample Size</button>
+      <button class="tab" type="button" data-action="outliers">Outliers</button>
+      <button class="tab" type="button" data-action="charts">Charts</button>
+    </div>
+
+    <div id="results" aria-live="polite"><div class="msg info">Pick a column and press an analysis button. Everything runs locally in your browser; nothing is sent to a server.</div></div>
+
+    <section class="panel about" aria-labelledby="about-h">
+      <h2 id="about-h">About the dataset</h2>
+      <p><a href="https://www.kaggle.com/datasets/valakhorasani/mobile-device-usage-and-user-behavior-dataset">Mobile Device Usage and User Behavior Dataset</a> by Vala Khorasani (Kaggle): 700 smartphone users with device model, OS, app usage, screen-on time, battery drain, apps installed, data usage, age, gender and a usage class. Used unmodified under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> (<a href="https://github.com/SaadOsama10/phone-usage-stats/blob/main/DATASET_LICENSE.txt">licence text</a>). Its author notes it is not a reliable source for papers, so treat results as a statistics exercise, not findings about real users.</p>
+      <p>Every statistic comes from <a href="https://github.com/SaadOsama10/phone-usage-stats/blob/main/stats_tools.py"><code>stats_tools.py</code></a>, written by hand with only Python's <code>math</code> module (no pandas, NumPy or SciPy), executed unchanged in your browser via <a href="https://pyodide.org">Pyodide</a>. The charts only draw numbers computed by that Python code.</p>
+    </section>
+    <footer>Author: Saed O S Radi · <a href="https://github.com/SaadOsama10/phone-usage-stats">Source on GitHub</a></footer>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const PYODIDE_VERSION = "0.29.3";
+let py = null, runPy = null, current = null, charts = [];
+const state = { ready: false };
+
+// ---- theme ----
+(function () {
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  $("theme").addEventListener("click", () => {
+    const dark = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() === "#12141c";
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    if (current && current.action === "charts") renderCharts(current);
+  });
+})();
+
+// ---- formatting helpers (display only; all numbers come from Python) ----
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const f2 = (x) => Number(x).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const f4 = (x) => Number(x).toFixed(4);
+const fp = (p) => (p === 0 ? "< 1e-15" : Number(p).toPrecision(4).replace(/\.?0+(e|$)/, "$1"));
+const stat = (k, v, cls = "") => `<div class="stat ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+const raw = (r) => `<details><summary>Output as in the desktop app</summary><pre>${esc(r.lines.join("\n"))}</pre></details>`;
+const head = (r, badges = "") => `<h2>${r.title}</h2><p class="col">${esc(r.column)}</p>${badges ? `<div class="badges">${badges}</div>` : ""}`;
+const modeBadge = (d) => d.mode === "z" ? `<span class="badge">z · σ known</span>` : `<span class="badge">Student's t · df = ${d.df}</span>`;
+
+const renderers = {
+  describe(r) {
+    const d = r.data;
+    return `<div class="card">${head(r)}<div class="stats">${stat("Count", d.count)}${stat("Mean", f2(d.mean))}${stat("Median", f2(d.median))}${stat("Variance (n − 1)", f2(d.variance))}${stat("Std. deviation", f2(d.std_dev))}${stat("Std. error", f2(d.std_err))}</div>${raw(r)}</div>`;
+  },
+  ci(r) {
+    const d = r.data;
+    return `<div class="card">${head(r, modeBadge(d) + `<span class="badge">${Math.round(d.confidence * 100)}% confidence</span>`)}<div class="stats">${stat("Confidence interval", `[${f2(d.lower)} , ${f2(d.upper)}]`, "big")}${stat("Margin of error", f2(d.margin))}${stat(d.mode === "z" ? "z critical" : "t critical", f4(d.critical))}${stat("Sample mean", f2(d.mean))}${stat("n", d.n)}</div><p class="note">Method: ${esc(d.method)}.</p>${raw(r)}</div>`;
+  },
+  test(r) {
+    const d = r.data;
+    const verdict = d.reject ? `<span class="badge bad">Reject H₀</span>` : `<span class="badge ok">Fail to reject H₀</span>`;
+    return `<div class="card">${head(r, `<span class="badge">${d.mode === "z" ? "z-test used" : "t-test used"}</span>${modeBadge(d)}${verdict}`)}<div class="stats">${stat("Null hypothesis", `μ = ${esc(+d.mu0)}`)}${stat("Sample mean", f2(d.mean))}${stat(esc(d.statistic_name), f2(d.statistic))}${stat("p-value", fp(d.p_value))}${stat("Significance α", d.alpha.toFixed(2))}${stat("Critical value", `±${f4(d.critical)}`)}</div><p class="note">${esc(d.test_name)}, two-tailed: reject H₀ when |statistic| &gt; ${f4(d.critical)} (equivalently p &lt; α).</p>${raw(r)}</div>`;
+  },
+  size(r) {
+    const d = r.data;
+    return `<div class="card">${head(r, `<span class="badge">z critical ${f4(d.z)}</span><span class="badge">${Math.round(d.confidence * 100)}% confidence</span>`)}<div class="stats">${stat("Estimated sample size", Number(d.n).toLocaleString("en-US"), "big")}${stat("Std. deviation used", f2(d.std_dev))}${stat("Margin of error E", +d.margin)}</div><p class="note">n = ⌈(z* · σ / E)²⌉ using the ${esc(d.source)}.</p>${raw(r)}</div>`;
+  },
+  outliers(r) {
+    const d = r.data;
+    const badge = d.count ? `<span class="badge warn">${d.count} outlier${d.count > 1 ? "s" : ""}</span>` : `<span class="badge ok">No outliers</span>`;
+    const ex = d.count ? stat("Example outliers", esc(d.outliers.slice(0, 5).map((x) => x.toFixed(1)).join(", ")), "big") : "";
+    return `<div class="card">${head(r, badge)}<div class="stats">${stat("Q1", f2(d.q1))}${stat("Q3", f2(d.q3))}${stat("IQR", f2(d.iqr))}${stat("Lower bound", f2(d.lower))}${stat("Upper bound", f2(d.upper))}${stat("Outliers", d.count)}${ex}</div><p class="note">IQR rule: values below Q1 − 1.5·IQR or above Q3 + 1.5·IQR.</p>${raw(r)}</div>`;
+  },
+  charts(r) {
+    return `<div class="card">${head(r, `<span class="badge">20-bin histogram</span><span class="badge">box plot</span><span class="badge">n = ${r.data.count}</span>`)}<div class="charts"><div id="hist" class="chart" role="img" aria-label="Histogram of ${esc(r.column)}"></div><div id="box" class="chart short" role="img" aria-label="Box plot of ${esc(r.column)}"></div></div><p class="note">Bin counts, quartiles, whiskers and outliers were computed by <code>stats_tools.py</code>; the chart library only draws them.</p></div>`;
+  },
+};
+
+function renderCharts(r) {
+  charts.forEach((c) => c.dispose()); charts = [];
+  const cs = getComputedStyle(document.documentElement);
+  const ink = cs.getPropertyValue("--ink").trim(), muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim(), bar = cs.getPropertyValue("--bar").trim();
+  const d = r.data, edges = d.edges;
+  const fmt = (x) => +x.toFixed(2);
+  const base = { textStyle: { color: ink }, animation: false };
+  const h = echarts.init($("hist"), null, { renderer: "svg" });
+  h.setOption({ ...base,
+    title: { text: "Histogram", textStyle: { color: ink, fontSize: 14 } },
+    grid: { left: 48, right: 12, top: 64, bottom: 56 },
+    tooltip: { trigger: "item", formatter: (p) => `${fmt(edges[p.dataIndex])} – ${fmt(edges[p.dataIndex + 1])}<br><b>${p.value}</b> users` },
+    xAxis: { type: "category", data: d.counts.map((_, i) => fmt((edges[i] + edges[i + 1]) / 2)), name: r.column, nameLocation: "middle", nameGap: 34, nameTextStyle: { color: muted }, axisLabel: { color: muted, hideOverlap: true }, axisLine: { lineStyle: { color: line } } },
+    yAxis: { type: "value", name: "Frequency", nameGap: 12, nameTextStyle: { color: muted }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: line } } },
+    series: [{ type: "bar", data: d.counts, barCategoryGap: "0%", itemStyle: { color: bar, borderColor: ink, borderWidth: 0.5 } }] });
+  const b = echarts.init($("box"), null, { renderer: "svg" });
+  b.setOption({ ...base,
+    title: { text: "Box plot", textStyle: { color: ink, fontSize: 14 } },
+    grid: { left: 24, right: 20, top: 40, bottom: 56 },
+    tooltip: { trigger: "item", formatter: (p) => p.seriesType === "boxplot"
+      ? `Min (whisker) ${fmt(p.value[1])}<br>Q1 ${fmt(p.value[2])}<br>Median ${fmt(p.value[3])}<br>Q3 ${fmt(p.value[4])}<br>Max (whisker) ${fmt(p.value[5])}`
+      : `Outlier ${p.value[0]}` },
+    xAxis: { type: "value", scale: true, name: r.column, nameLocation: "middle", nameGap: 34, nameTextStyle: { color: muted }, axisLabel: { color: muted }, splitLine: { lineStyle: { color: line } } },
+    yAxis: { type: "category", data: [""], axisLine: { show: false }, axisTick: { show: false } },
+    series: [
+      { type: "boxplot", data: [[d.whisker_low, d.q1, d.median, d.q3, d.whisker_high]], itemStyle: { color: bar, borderColor: ink }, boxWidth: [20, 60] },
+      { type: "scatter", data: d.fliers.map((x) => [x, 0]), itemStyle: { color: "transparent", borderColor: ink }, symbolSize: 7 }] });
+  charts.push(h, b);
+}
+
+// ---- running analyses ----
+function inputs() { return [$("mu0").value, $("sigma").value, $("margin").value]; }
+
+async function show(action) {
+  if (!state.ready) return;
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-pressed", String(t.dataset.action === action)));
+  const r = JSON.parse(runPy(action, $("column").value, ...inputs()));
+  current = r;
+  const box = $("results");
+  charts.forEach((c) => c.dispose()); charts = [];
+  if (!r.ok) { box.innerHTML = `<div class="msg err" role="alert">${esc(r.error)}</div>`; return; }
+  box.innerHTML = renderers[action](r);
+  if (action === "charts") renderCharts(r);
+  return r;
+}
+window.addEventListener("resize", () => charts.forEach((c) => c.resize()));
+
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => show(t.dataset.action)));
+$("column").addEventListener("change", () => {
+  const active = document.querySelector('.tab[aria-pressed="true"]');
+  if (active) show(active.dataset.action);
+  else $("results").innerHTML = `<div class="msg info">Selected column: ${esc($("column").value)}</div>`;
+});
+["mu0", "sigma", "margin"].forEach((id) => $(id).addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { const a = document.querySelector('.tab[aria-pressed="true"]'); show(a ? a.dataset.action : "describe"); }
+}));
+
+// ---- boot ----
+async function boot() {
+  try {
+    if (typeof loadPyodide !== "function") throw new Error("Could not load Pyodide from the CDN (check your connection).");
+    py = await loadPyodide({ indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/` });
+    $("load-detail").textContent = "Loading stats_tools.py and the dataset…";
+    const get = async (name) => { const res = await fetch(name, { cache: "no-cache" }); if (!res.ok) throw new Error(`Could not fetch ${name} (${res.status})`); return res.text(); };
+    const [stats, core, csv] = await Promise.all([get("stats_tools.py"), get("web_core.py"), get("user_behavior_dataset.csv")]);
+    py.FS.writeFile("stats_tools.py", stats);   // the repo's file, byte for byte
+    py.FS.writeFile("web_core.py", core);
+    py.FS.writeFile("user_behavior_dataset.csv", csv);
+    const mod = py.pyimport("web_core");
+    const cols = JSON.parse(mod.load_csv(csv));
+    runPy = (...a) => mod.run(...a);
+    $("column").innerHTML = cols.map((c) => `<option>${esc(c)}</option>`).join("");
+    $("column").value = "App Usage Time (min/day)";
+    state.ready = true;
+    window.demoApi = { run: (...a) => JSON.parse(runPy(...a)), columns: cols, pythonVersion: py.runPython("import sys; sys.version.split()[0]"), pyodideVersion: py.version };
+    $("loader").hidden = true; $("app").hidden = false;
+    document.documentElement.dataset.ready = "1";
+  } catch (err) {
+    $("load-title").textContent = "Could not start the demo";
+    $("load-detail").textContent = String(err && err.message || err);
+    document.querySelector(".spin").style.display = "none";
+    console.error(err);
+  }
+}
+boot();
+</script>
+</body>
+</html>
